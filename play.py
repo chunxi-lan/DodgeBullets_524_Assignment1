@@ -3,36 +3,36 @@ import numpy as np
 from env import AntiAircraftEnv
 from agent import QLearningAgent
 
-# 创建环境和智能体
+# Create environment and agent
 env = AntiAircraftEnv()
 agent = QLearningAgent(state_dim=env.state_dim, action_dim=env.action_dim)
 
-# 加载训练好的模型
+# Load trained model
 try:
     agent.load('models/q_table_final.pkl')
-    print("模型加载成功！")
+    print("Model loaded successfully!")
 except FileNotFoundError:
-    print("模型文件未找到，请先运行训练脚本。")
+    print("Model file not found, please run training script first.")
     exit()
 
-# 游戏主循环
+# Game main loop
 running = True
 total_reward = 0
 step = 0
 fire_count = 0
 hit_count = 0
 
-print("游戏控制：")
-print("- AI自动调整炮塔角度")
-print("- 持续开火模式（所有动作都包含开火）")
-print("- 按Q键退出")
-print("- 观察AI如何调整炮口角度并持续开火")
+print("Game Controls:")
+print("- AI automatically adjusts cannon angle")
+print("- Continuous fire mode (all actions include firing)")
+print("- Press Q to quit")
+print("- Observe how AI adjusts cannon angle and fires continuously")
 
-# 设置AI更积极地探索（降低epsilon）
-agent.epsilon = 0.05  # 保留一点随机性
+# Set AI to explore more aggressively (reduce epsilon)
+agent.epsilon = 0.05  # Keep some randomness
 
 while running:
-    # 处理事件
+    # Handle events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -40,89 +40,89 @@ while running:
             if event.key == pygame.K_q:
                 running = False
     
-    # 获取当前状态
+    # Get current state
     state = env.get_state()
     
-    # AI控制角度调整（所有动作都包含开火）
+    # AI controls angle adjustment (all actions include firing)
     action = agent.act(state, eval_mode=False)
     
-    # 执行动作
+    # Execute action
     next_state, reward, done, _ = env.step(action)
     
-    # 统计开火次数（基于冷却时间）
-    if env.current_cooldown == env.cooldown:  # 刚刚开火
+    # Count fire times (based on cooldown)
+    if env.current_cooldown == env.cooldown:  # Just fired
         fire_count += 1
-        print(f"\nAI开火！第{fire_count}次开火")
-        print(f"飞机位置: {env.plane_x:.0f}, 炮口角度: {env.cannon_angle:.1f}°")
+        print(f"\nAI Fires! Fire count: {fire_count}")
+        print(f"Plane position: {env.plane_x:.0f}, Cannon angle: {env.cannon_angle:.1f}°")
     
-    # 检测是否击中
-    if reward > 50:  # 击中奖励通常是100
+    # Check if hit
+    if reward > 50:  # Hit reward is usually 100
         hit_count += 1
-        print(f"*** 击中飞机！累计击中: {hit_count}次 ***")
+        print(f"*** Hit plane! Total hits: {hit_count} ***")
     
-    # 更新奖励
+    # Update reward
     total_reward += reward
     step += 1
     
-    # 清屏
+    # Clear screen
     env.screen.fill(env.WHITE)
     
-    # 绘制飞机
+    # Draw plane
     pygame.draw.rect(env.screen, env.BLUE, (env.plane_x, env.plane_y, 50, 25))
     
-    # 绘制炮台
+    # Draw cannon base
     pygame.draw.circle(env.screen, env.BLACK, (env.cannon_x, env.cannon_y), 20)
     
-    # 绘制炮管
+    # Draw cannon barrel
     angle_rad = np.radians(env.cannon_angle)
     cannon_length = 40
     cannon_end_x = env.cannon_x + int(np.sin(angle_rad) * cannon_length)
     cannon_end_y = env.cannon_y - int(np.cos(angle_rad) * cannon_length)
     pygame.draw.line(env.screen, env.BLACK, (env.cannon_x, env.cannon_y), (cannon_end_x, cannon_end_y), 5)
     
-    # 绘制子弹（使用更显眼的样式）
+    # Draw bullets (using more visible style)
     for bullet in env.bullets:
-        # 红色实心圆
+        # Red solid circle
         pygame.draw.circle(env.screen, (255, 0, 0), (int(bullet.x), int(bullet.y)), bullet.radius)
-        # 黄色中心点
+        # Yellow center dot
         pygame.draw.circle(env.screen, (255, 255, 0), (int(bullet.x), int(bullet.y)), 2)
     
-    # 绘制射程范围
+    # Draw firing range
     pygame.draw.circle(env.screen, (200, 200, 200), (env.cannon_x, env.cannon_y), env.fire_range, 1)
     
-    # 在屏幕上显示信息
+    # Display info on screen
     font = pygame.font.Font(None, 36)
     
-    # 第一行：步数和奖励
+    # First line: step and reward
     text = font.render(f"Step: {step}, Reward: {total_reward:.2f}", True, env.BLACK)
     env.screen.blit(text, (10, 10))
     
-    # 第二行：控制模式
+    # Second line: control mode
     mode_text = font.render(f"AI Control - Auto Fire", True, env.BLACK)
     env.screen.blit(mode_text, (10, 50))
     
-    # 第三行：统计信息
+    # Third line: statistics
     stats_text = font.render(f"Bullets: {len(env.bullets)}, Fires: {fire_count}, Hits: {hit_count}", True, env.BLACK)
     env.screen.blit(stats_text, (10, 90))
     
-    # 第四行：状态信息
+    # Fourth line: status info
     state_text = font.render(f"Plane: {env.plane_x:.0f}, Angle: {env.cannon_angle:.1f}°, Continuous Fire", True, env.BLACK)
     env.screen.blit(state_text, (10, 130))
     
-    # 更新显示
+    # Update display
     pygame.display.flip()
     env.clock.tick(60)
     
-    # 每400步重置游戏
+    # Reset game every 400 steps
     if step >= 400:
-        print(f"\n--- 回合结束 ---")
-        print(f"总步数: {step}, 总奖励: {total_reward:.2f}")
-        print(f"开火次数: {fire_count}, 击中次数: {hit_count}")
+        print(f"\n--- Round Ended ---")
+        print(f"Total steps: {step}, Total reward: {total_reward:.2f}")
+        print(f"Fire count: {fire_count}, Hit count: {hit_count}")
         state = env.reset()
         total_reward = 0
         step = 0
         fire_count = 0
         hit_count = 0
 
-print("\n演示结束")
+print("\nDemo ended")
 env.close()
